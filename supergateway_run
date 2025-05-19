@@ -1,0 +1,8 @@
+docker run -it --rm -p 8000:8000 supercorp/supergateway \
+    --stdio "sh -c 'npm install -g n8n-mcp-server && exec n8n-mcp-server'" \
+    --port 8000 \
+    -e N8N_API_URL="https://primary-production-d902.up.railway.app/api/v1" \
+    -e N8N_API_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZjI4NjdjZC0xNmNjLTQxZWYtYTU1Mi05Mjk1ZWU5ZTFiN2IiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzQ3NDQwMDYyfQ.y0wO9czCQxel5Iub3zeSZ6z32blyaXAtsHYDUXSpGu8" \
+    -e N8N_WEBHOOK_USERNAME="someuser" \
+    -e N8N_WEBHOOK_PASSWORD="somepassword" \
+    -e DEBUG="true"

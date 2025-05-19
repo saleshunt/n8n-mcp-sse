@@ -1,0 +1,148 @@
+{
+  "createdAt": "2025-05-17T23:08:41.583Z",
+  "updatedAt": "2025-05-17T23:18:52.074Z",
+  "id": "40GFe1dyCOxzL2zA",
+  "name": "Lead Classification and Slack Notification",
+  "active": false,
+  "nodes": [
+    {
+      "position": [
+        480,
+        300
+      ],
+      "typeVersion": 1,
+      "name": "Incoming Lead Trigger",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "responseMode": "onReceived",
+        "path": "lead-classifier-webhook"
+      },
+      "type": "n8n-nodes-base.webhook",
+      "id": "696fe9d2-b1bf-4778-870c-7062e35094f1"
+    },
+    {
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "value": "={{ ['lead', 'partner', 'current customer'][$rand($items.length)] }}",
+              "name": "classification_result"
+            }
+          ]
+        },
+        "options": {
+          "keepOnlySet": false
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "name": "Classify Input (Placeholder)",
+      "typeVersion": 1,
+      "id": "2341c7af-e996-4640-acd1-720872159ae6"
+    },
+    {
+      "position": [
+        960,
+        300
+      ],
+      "typeVersion": 1,
+      "name": "Notify Slack Channel",
+      "type": "n8n-nodes-base.slack",
+      "parameters": {
+        "slackApi": "::SLACK_CREDENTIALS_ID::",
+        "options": {},
+        "text": "New Classification: {{ $json.classification_result }}\\nOriginal Data:\\n```{{ JSON.stringify($node[\"Incoming Lead Trigger\"].json.body, null, 2) }}```",
+        "authentication": "slackApi",
+        "channel": "::SLACK_CHANNEL_ID::"
+      },
+      "id": "58f1a88e-cca3-412e-9455-4b9732c175e6"
+    }
+  ],
+  "connections": {
+    "Incoming Lead Trigger": {
+      "main": [
+        [
+          {
+            "node": "Classify Input (Placeholder)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Classify Input (Placeholder)": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack Channel",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 3600,
+    "timezone": "UTC"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "797735e7-46c0-4aea-aa75-b6dae4db1359",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "createdAt": "2025-05-17T23:08:41.583Z",
+      "updatedAt": "2025-05-17T23:08:41.583Z",
+      "role": "workflow:owner",
+      "workflowId": "40GFe1dyCOxzL2zA",
+      "projectId": "rjy728Jg2LbhEb8Y",
+      "project": {
+        "createdAt": "2025-05-16T23:43:48.839Z",
+        "updatedAt": "2025-05-16T23:49:17.852Z",
+        "id": "rjy728Jg2LbhEb8Y",
+        "name": "Jacob Dietle <jacob@generateleverage.com>",
+        "type": "personal",
+        "icon": null,
+        "projectRelations": [
+          {
+            "createdAt": "2025-05-16T23:43:48.839Z",
+            "updatedAt": "2025-05-16T23:43:48.839Z",
+            "role": "project:personalOwner",
+            "userId": "ef2867cd-16cc-41ef-a552-9295ee9e1b7b",
+            "projectId": "rjy728Jg2LbhEb8Y",
+            "user": {
+              "createdAt": "2025-05-16T23:43:47.505Z",
+              "updatedAt": "2025-05-16T23:49:21.400Z",
+              "id": "ef2867cd-16cc-41ef-a552-9295ee9e1b7b",
+              "email": "jacob@generateleverage.com",
+              "firstName": "Jacob",
+              "lastName": "Dietle",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-05-16T23:49:19.562Z",
+                "personalization_survey_n8n_version": "1.92.2"
+              },
+              "settings": {
+                "userActivated": false
+              },
+              "role": "global:owner",
+              "disabled": false,
+              "mfaEnabled": false,
+              "isPending": false,
+              "isOwner": true
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+} 
