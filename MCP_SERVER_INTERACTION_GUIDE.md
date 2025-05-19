@@ -71,4 +71,18 @@ Updating n8n workflows, especially with complex nodes, requires precision.
 *   **Minimal Test Cases:** Start with the simplest possible operation (e.g., updating only a workflow name) to establish a baseline.
 *   **Direct API Testing (If Stuck):** If MCP tool calls consistently fail and the server-side code seems correct, using a direct API client (like `curl`, Postman, or a simple script like our `test_n8n_update.mjs`) can help determine if the issue is with the n8n API itself, the payload, or the MCP server/client interaction.
 
+## 6. Interacting with an SSE-Wrapped MCP Server (via Supergateway)
+
+When the `n8n-mcp-server` is deployed with Supergateway to expose its functionality over SSE (Server-Sent Events):
+
+*   **Server-Side:** The `n8n-mcp-server` itself still operates on stdio. Supergateway, running in the same container, manages the `n8n-mcp-server` as a child process and translates its stdio communication to/from SSE on a specified HTTP port.
+*   **Client-Side Connection:**
+    *   **Using Supergateway (SSE-to-stdio bridge):** Most existing MCP clients (like Cursor) that expect a command-based stdio server will need to use Supergateway *locally* in its SSE-to-stdio mode. The `mcp.json` (or equivalent client configuration) will specify a command like `npx supergateway --sse https://<your-deployed-server-url>/sse`. This local Supergateway instance connects to the remote SSE feed and provides a stdio interface for the MCP client.
+    *   **Native SSE MCP Client:** If an MCP client has native support for connecting to MCP servers over SSE, it could directly consume the SSE feed from the deployed URL. This bypasses the need for a local Supergateway bridge.
+*   **Debugging:** Debugging involves checking logs at multiple points:
+    1.  The client application (e.g., Cursor's MCP inspector).
+    2.  The local Supergateway bridge (if used).
+    3.  The deployed Supergateway logs on the server (e.g., via Railway logs).
+    4.  The `n8n-mcp-server` logs (which are part of the deployed Supergateway's output).
+
 By following these guidelines, interactions with the `n8n-mcp-server` should be much smoother and easier to debug. 

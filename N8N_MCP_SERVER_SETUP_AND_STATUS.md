@@ -2,13 +2,13 @@
 
 This document provides instructions for setting up the `n8n-mcp-server` for use with Cursor via Docker, a summary of the current n8n tool functionality, a root cause analysis for issues encountered, and recommended next steps.
 
-## Phase 1: Ensure a Correct Docker Image for `n8n-mcp-server` is Built (Building from Local Source)
+## Phase 1: Ensure a Correct Docker Image for `n8n-mcp-server` is Built (Building from Local Source with Supergateway)
 
-This phase details how to create a Docker image that correctly builds and runs the `n8n-mcp-server` from your local source code. This is the recommended approach for development and ensuring your latest code changes are deployed.
+This phase details how to create a Docker image that correctly builds and runs the `n8n-mcp-server` from your local source code, with Supergateway wrapping it to provide an SSE interface.
 
 *   **Step 1.1: Verify/Create the Correct `Dockerfile` for `n8n-mcp-server`**
     *   **Location:** `C:\Users\dietl\VSCode Projects\speed_to_insight\n8n-mcp-server\Dockerfile` (Adjust path as per your local setup)
-    *   **Content:**
+    *   **Content (ensure it matches the Supergateway version):**
         ```dockerfile
         # Stage 1: Build the application
         FROM node:18-slim AS builder
@@ -22,47 +22,41 @@ This phase details how to create a Docker image that correctly builds and runs t
         FROM node:18-slim
         WORKDIR /app
         ENV NODE_ENV production
-        # Copy only necessary files from the builder stage
         COPY --from=builder /app/package.json /app/package-lock.json ./
         RUN npm ci --omit=dev --ignore-scripts
         COPY --from=builder /app/build ./build
-        COPY --from=builder /app/node_modules ./node_modules
 
-        # Environment variable to enable debug logs from the N8nApiClient
-        ENV DEBUG true
+        EXPOSE 8000 
 
-        # Command to run the server (points to the built JS entry point)
-        CMD ["node", "build/index.js"]
+        CMD ["sh", "-c", "npx -y supergateway --stdio \\\"node build/index.js\\\" --port 8000 --healthEndpoint /healthz --cors --logLevel info"]
         ```
-    *   **Action:** Ensure your `Dockerfile` matches this content. This Dockerfile uses a multi-stage build to create a lean production image containing only your built code and production dependencies.
+    *   **Action:** Ensure your `Dockerfile` matches this content. This Dockerfile now includes Supergateway in the `CMD` line.
 
-*   **Step 1.2: Build the Docker Image**
+*   **Step 1.2: Build the Docker Image for Local Testing**
     *   **Command (run in PowerShell, in the `n8n-mcp-server` directory):**
         ```powershell
-        docker build -t n8n-mcp-server-local .
+        docker build -t n8n-mcp-server-supergateway-local .
         ```
-    *   **Expected Outcome:** The command completes successfully, creating a local Docker image named `n8n-mcp-server-local`.
-    *   **Verification (Optional):** Run `docker images` in PowerShell to see `n8n-mcp-server-local` listed.
+    *   **Expected Outcome:** Creates a local Docker image named `n8n-mcp-server-supergateway-local`.
+    *   **Rationale:** This image is for local testing of the Supergateway setup before deploying to Railway or for local development of the n8n-mcp-server itself.
 
-## Phase 2: Configure Cursor's `mcp.json` to Use This Docker Image
+## Phase 2: Configure Cursor's `mcp.json` to Use `n8n-mcp-server`
 
-This phase explains how to configure Cursor to launch and communicate with the Dockerized `n8n-mcp-server`.
+This phase explains how to configure Cursor to communicate with the `n8n-mcp-server`.
 
-*   **Step 2.1: Edit `mcp.json`**
-    *   **File Location:** `c:\Users\dietl\.cursor\mcp.json` (Adjust path as per your OS and user)
-    *   **Action:** Open this file and add or modify an entry within the `"mcpServers": {}` object.
-    *   **JSON Entry to Add/Modify:**
+*   **Option A: Connecting to the Railway-Deployed SSE Server (Recommended for using the deployed instance)**
+    *   **Pre-requisite:** The `n8n-mcp-server` is deployed to Railway and you have its public SSE URL (e.g., `https://<your-app>.railway.app/sse`).
+    *   **Action:** Edit `mcp.json` (e.g., `c:\Users\dietl\.cursor\mcp.json`).
+    *   **JSON Entry:**
         ```json
-            "n8n_docker_direct": {
-              "command": "docker",
+            "n8n_railway_sse": {
+              "command": "npx",
               "args": [
-                "run", "--rm", "-i",
-                "-e", "N8N_API_URL=https://primary-production-d902.up.railway.app/api/v1",
-                "-e", "N8N_API_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZjI4NjdjZC0xNmNjLTQxZWYtYTU1Mi05Mjk1ZWU5ZTFiN2IiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzQ3NDQwMDYyfQ.y0wO9czCQxel5Iub3zeSZ6z32blyaXAtsHYDUXSpGu8",
-                "-e", "N8N_WEBHOOK_USERNAME=someuser",
-                "-e", "N8N_WEBHOOK_PASSWORD=somepassword",
-                "-e", "DEBUG=true",
-                "n8n-mcp-server-local"
+                "-y",
+                "supergateway",
+                "--sse", "https://<YOUR_RAILWAY_APP_URL>/sse", // <-- REPLACE THIS
+                "--logLevel", "info"
+                // Add --header or --oauth2Bearer flags here if auth is configured on the Railway Supergateway
               ],
               "disabled": false,
               "alwaysAllow": [
@@ -73,43 +67,71 @@ This phase explains how to configure Cursor to launch and communicate with the D
                 "mcp_n8n_docker_direct_delete_workflow",
                 "mcp_n8n_docker_direct_activate_workflow",
                 "mcp_n8n_docker_direct_deactivate_workflow"
+                // Add other n8n tools as needed
               ],
               "timeout": 300 
             }
         ```
-        *   **Note on Image Name**: Changed from `n8n-mcp-server-npm` to `n8n-mcp-server-local` to reflect the new build process.
-        *   **Note on `alwaysAllow`**: List the exact tool names as they appear in Cursor.
-        *   **Note on Environment Variables**: Ensure your `N8N_API_URL` and `N8N_API_KEY` are current and correct. `DEBUG=true` is important for seeing detailed logs from the server's `N8nApiClient` via `stderr`.
-    *   **Placement:** Ensure correct JSON syntax if other servers are already defined.
-    *   Save the `mcp.json` file.
+    *   **Explanation:** Cursor will run Supergateway locally. This local Supergateway connects to your *remote* Railway SSE endpoint and translates the SSE communication back to stdio, which Cursor understands.
 
-## Phase 3: Test in Cursor
+*   **Option B: Connecting to a Locally Running Dockerized Server (For local development/testing of the server)**
+    *   **Action:** Edit `mcp.json`.
+    *   **JSON Entry:**
+        ```json
+            "n8n_docker_local_supergateway": {
+              "command": "docker",
+              "args": [
+                "run", "--rm", "-i",
+                "-e", "PORT=8080", // Example: local supergateway listens on 8080
+                "-e", "N8N_API_URL=YOUR_N8N_API_URL", // Replace
+                "-e", "N8N_API_KEY=YOUR_N8N_API_KEY",   // Replace
+                "-e", "N8N_WEBHOOK_USERNAME=someuser",
+                "-e", "N8N_WEBHOOK_PASSWORD=somepassword",
+                "-e", "DEBUG=true",
+                "-p", "8080:8080", // Map the host port to the container port Supergateway uses
+                "n8n-mcp-server-supergateway-local" // The image built in Step 1.2
+              ],
+              "disabled": false,
+              "alwaysAllow": [/* ...list tools... */],
+              "timeout": 300 
+            }
+        ```
+    *   **Explanation:** This runs your `n8n-mcp-server-supergateway-local` Docker image. Supergateway inside this container starts your `n8n-mcp-server` and exposes it on port 8080 (example). Cursor *cannot directly talk SSE*. So, to use *this* local setup with Cursor, you would *still* need another `mcp.json` entry that uses Supergateway in SSE-to-stdio mode, pointing to `http://localhost:8080/sse`.
+        ```json
+            "n8n_local_docker_via_local_sg_bridge": {
+              "command": "npx",
+              "args": [
+                "-y", "supergateway",
+                "--sse", "http://localhost:8080/sse", // Points to the SSE from the Docker container above
+                "--logLevel", "info"
+              ],
+              "disabled": false,
+              "alwaysAllow": [/* ...list tools... */],
+              "timeout": 300
+            }
+        ```
+    *   This setup is more complex for direct Cursor use; Option A is preferred for connecting to the deployed instance. Option B (running the Docker image directly) is primarily for testing the Docker image itself and server functionality locally before deployment, perhaps testing its SSE output with `curl` or a dedicated SSE client.
 
-After configuring, test the integration within Cursor.
+## Phase 3: Test in Cursor (Connecting to Deployed Railway Instance)
 
 *   **Step 3.1: Reload MCP Servers in Cursor**
-    *   Restart Cursor completely.
-    *   Alternatively, use a command like "Developer: Reload MCP Servers" from the command palette if available.
+    *   Restart Cursor or use "Developer: Reload MCP Servers".
 
-*   **Step 3.2: Activate and Use the `n8n_docker_direct` Server**
-    *   In Cursor, access the MCP server list.
-    *   Enable `n8n_docker_direct`.
-    *   Invoke a tool, e.g., `@n8n_docker_direct list workflows`.
+*   **Step 3.2: Activate and Use the `n8n_railway_sse` Server**
+    *   In Cursor, enable `n8n_railway_sse` (or whatever you named it in `mcp.json` using Option A).
+    *   Invoke a tool, e.g., `@n8n_railway_sse list workflows`.
 
 *   **Step 3.3: Observe Logs**
-    *   Check Cursor's MCP Output/Inspector for communication logs from the MCP client (`rect:` prefixed logs).
-    *   Check your Docker container's logs for output from the `n8n-mcp-server` itself (e.g., `[N8nApiClient DEBUG]` messages).
-        ```powershell
-        docker logs <container_id_or_name> 
-        ```
-        (You can get the container ID from Docker Desktop or `docker ps`)
+    *   Cursor's MCP Output/Inspector.
+    *   Railway deployment logs for the `n8n-mcp-server` (shows logs from deployed Supergateway and your `node build/index.js`).
+    *   If debugging the local Supergateway bridge, check the terminal where `npx supergateway --sse ...` is implicitly run by Cursor.
 
-**Expected Outcome for Phase 3:**
-Cursor successfully executes `docker run ... n8n-mcp-server-local`, the container starts, `n8n-mcp-server` communicates via JSON-RPC over `stdio`, and tool requests receive correct responses. Debug logs from the server appear on `stderr` and can be viewed via `docker logs`.
+**Expected Outcome for Phase 3 (with Railway):**
+Cursor, using its local Supergateway bridge, successfully communicates with the Supergateway instance on Railway, which in turn communicates with your `n8n-mcp-server` via stdio. Tool requests receive correct responses.
 
 ## n8n Tooling Status (via `n8n_docker_direct` MCP Server)
 
-Based on recent testing:
+Based on recent testing (via local Docker SSE setup connected directly to Cursor):
 
 *   `mcp_n8n_docker_direct_list_workflows`: **SUCCESS**
 *   `mcp_n8n_docker_direct_get_workflow`: **SUCCESS**
@@ -164,5 +186,16 @@ By significantly reducing `console.error` logging (especially at startup and fro
 *   **Systematic Logging Reduction:** Began commenting out `console.error` statements, starting from server initialization and then within the API client and tool handler logic.
 *   **Breakthrough:** After commenting out most `console.error` calls (leaving only essential Axios debug logs and a single critical payload log in `update.ts`), the `update_workflow` tool finally succeeded via the MCP client. This confirmed the logging interference was the primary blocker for the MCP client successfully interpreting the server's responses.
 *   **Current Status:** `update_workflow` is functional. The key remaining `console.error` logs are the Axios debug interceptors (enabled by `ENV DEBUG=true`) and one specific log in `update.ts` showing the constructed payload.
+
+*   **Dockerfile `EXPOSE` Error (May 19, 2025):** Encountered `ERROR: failed to solve: invalid containerPort: #` during `docker build`. Caused by using shell expansion `${PORT:-8000}` in the `EXPOSE` instruction. Fixed by changing `EXPOSE ${PORT:-8000}` to `EXPOSE 8000`.
+*   **Dockerfile `npm ci` / `prepare` Script Error (May 19, 2025):** `docker build` failed during `RUN npm ci` because the `prepare` script in `package.json` (which ran `npm run build`) was executed before source files were copied. `tsc` failed as it had no input. Fixed by changing `RUN npm ci` to `RUN npm ci --ignore-scripts` in the builder stage of the Dockerfile.
+*   **Successful Local Docker SSE Test (May 19, 2025):**
+    *   Successfully built the Docker image (`n8n-mcp-server-supergateway`) with the multi-stage Dockerfile including Supergateway.
+    *   Ran the container locally, mapping port 8000.
+    *   Supergateway started correctly and wrapped the `n8n-mcp-server`.
+    *   The `/healthz` endpoint (`http://localhost:8000/healthz`) returned an OK status.
+    *   Configured Cursor's `mcp.json` with a new entry (`n8n_local_docker_sse`) using the direct SSE URL (`http://localhost:8000/sse`).
+    *   Successfully listed workflows in Cursor via the local Dockerized SSE server.
+*   **Current Overall Status:** Local Docker deployment with Supergateway exposing an SSE interface is validated and working correctly with Cursor. Ready for Railway deployment.
 
 By addressing the Docker build process and the logging interference, the `update_workflow` tool is now operational.

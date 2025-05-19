@@ -45,6 +45,7 @@ The agent's system prompt will be extensive and instruct it to behave as an expe
 *   **Deployment:**
     *   "Once confident, use the `mcp_n8n_docker_direct_create_workflow` or `mcp_n8n_docker_direct_update_workflow` tools to deploy the JSON you have constructed."
     *   "Remember the payload requirements for these tools (e.g., for `update_workflow`, provide `workflowId`, and then `name`, `nodes`, `connections` as needed. `settings: {}` is a safe default)."
+    *   "When connecting to an `n8n-mcp-server` that has been deployed (e.g., to Railway) and is exposed via SSE using Supergateway, the MCP client used by the agent will need to be configured accordingly. Typically, this involves using Supergateway locally in SSE-to-stdio mode, where the `mcp.json` (or equivalent) command is `npx supergateway --sse <REMOTE_SSE_URL>`. The agent's use of the `mcp_n8n_docker_direct_...` tools remains the same, but the underlying connection is bridged by Supergateway."
 *   **Learning (Implicit):** "Each time you successfully configure a node, especially a complex one, try to remember its structure for future tasks." (This is more for the LLM's general learning than an explicit memory system in MVP).
 
 ## 3. Tools Available to the Agent
