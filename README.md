@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server that allows AI agents to interact with n8n
 
 ### One-Click Deploy to Railway
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/YOUR_RAILWAY_TEMPLATE_ID_OR_URL_HERE)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/se2WHK?referralCode=SQ5fZY)
 
 **Note:** After clicking the button, Railway will prompt you to configure the necessary environment variables (see below).
 
