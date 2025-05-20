@@ -1,170 +1,144 @@
-# n8n MCP Server
+# One Click Deploy n8n MCP Server
 
-A Model Context Protocol (MCP) server that allows AI assistants to interact with n8n workflows through natural language.
+A Model Context Protocol (MCP) server that allows AI agents to interact with n8n workflows through natural language.
 
-## Overview
+## Deployment
 
-This MCP server provides tools and resources for AI assistants to manage n8n workflows and executions. It allows assistants to:
+### One-Click Deploy to Railway
 
-- List, create, update, and delete workflows
-- Activate and deactivate workflows
-- Execute workflows and monitor their status
-- Access workflow information and execution statistics
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/YOUR_RAILWAY_TEMPLATE_ID_OR_URL_HERE)
 
-## Installation
+**Note:** After clicking the button, Railway will prompt you to configure the necessary environment variables (see below).
 
-### Prerequisites
+### Docker Deployment (Manual / Local Testing)
 
-- Node.js 18 or later
-- n8n instance with API access enabled
+The `Dockerfile` in this repository is configured to build the `n8n-mcp-server` and run it with Supergateway.
 
-### Install from npm
+1.  **Build the Docker Image:**
+    ```bash
+    docker build -t n8n-mcp-server-supergateway .
+    ```
 
-```bash
-npm install -g n8n-mcp-server
-```
-
-### Install from source
-
-```bash
-# Clone the repository
-git clone https://github.com/leonardsellem/n8n-mcp-server.git
-cd n8n-mcp-server
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Optional: Install globally
-npm install -g .
-```
-
-### Docker Installation
-
-You can also run the server using Docker:
-
-```bash
-# Pull the image
-docker pull leonardsellem/n8n-mcp-server
-
-# Run the container with your n8n API configuration
-docker run -e N8N_API_URL=http://your-n8n:5678/api/v1 \
-  -e N8N_API_KEY=your_n8n_api_key \
-  -e N8N_WEBHOOK_USERNAME=username \
-  -e N8N_WEBHOOK_PASSWORD=password \
-  leonardsellem/n8n-mcp-server
-```
+2.  **Run the Docker Container:**
+    ```bash
+    docker run --rm -it -p 8080:8080 \
+      -e PORT=8080 \
+      -e N8N_API_URL="YOUR_N8N_API_URL" \
+      -e N8N_API_KEY="YOUR_N8N_API_KEY" \
+      -e N8N_WEBHOOK_USERNAME="your_webhook_user" \
+      -e N8N_WEBHOOK_PASSWORD="your_webhook_password" \
+      -e DEBUG=true \
+      n8n-mcp-server-supergateway
+    ```
+    Replace placeholder values with your actual n8n credentials. The server will be accessible via SSE on `http://localhost:8080`. Supergateway provides default paths `/sse` for the event stream and `/message` for posting messages.
 
 ## Configuration
 
-Create a `.env` file in the directory where you'll run the server, using `.env.example` as a template:
+The server requires the following environment variables. When deploying to Railway using the button, you will be prompted for these. For local Docker runs, pass them using the `-e` flag as shown above.
 
-```bash
-cp .env.example .env
-```
-
-Configure the following environment variables:
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `N8N_API_URL` | Full URL of the n8n API, including `/api/v1` | `http://localhost:5678/api/v1` |
-| `N8N_API_KEY` | API key for authenticating with n8n | `n8n_api_...` |
-| `N8N_WEBHOOK_USERNAME` | Username for webhook authentication (if using webhooks) | `username` |
-| `N8N_WEBHOOK_PASSWORD` | Password for webhook authentication | `password` |
-| `DEBUG` | Enable debug logging (optional) | `true` or `false` |
+*   `N8N_API_URL`: Your n8n instance API URL (e.g., `https://n8n.example.com/api/v1`). **Required.**
+*   `N8N_API_KEY`: Your n8n API Key. **Required** and treated as a secret.
+*   `N8N_WEBHOOK_USERNAME`: A username for basic authentication on n8n webhook nodes (if your workflows use webhook triggers secured with basic auth). Default: `anyname`.
+*   `N8N_WEBHOOK_PASSWORD`: A password for basic authentication on n8n webhook nodes. Default: `somepassword`.
+*   `DEBUG`: Set to `true` for verbose logging from the n8n-mcp-server and Supergateway, or `false` for production. Default: `false`.
+*   `PORT`: The port the application will listen on. Railway sets this automatically. Supergateway uses this variable. The `Dockerfile` default is `8080`.
 
 ### Generating an n8n API Key
 
-1. Open your n8n instance in a browser
-2. Go to Settings > API > API Keys
-3. Create a new API key with appropriate permissions
-4. Copy the key to your `.env` file
+1.  Open your n8n instance in a browser.
+2.  Go to Settings > API (or a similar path depending on your n8n version).
+3.  Create a new API key with appropriate permissions.
+4.  Copy the key.
 
-## Usage
+## Connecting to the Server (Client Integration)
 
-### Running the Server
+Once the `n8n-mcp-server` is running (e.g., deployed on Railway or locally in Docker), it exposes an MCP interface over Server-Sent Events (SSE).
 
-From the installation directory:
+The Supergateway instance within the Docker container (as defined in `Dockerfile`) typically makes the MCP server available at:
+*   **SSE Stream:** `http://<server_address>:<port>/sse`
+*   **Message Endpoint:** `http://<server_address>:<port>/message`
 
-```bash
-n8n-mcp-server
-```
+(If deployed on Railway, `<server_address>:<port>` will be your public Railway URL, e.g., `https://my-n8n-mcp.up.railway.app`)
 
-Or if installed globally:
+There are a couple of ways AI agents or MCP clients can connect:
 
-```bash
-n8n-mcp-server
-```
+1.  **Direct SSE Connection:**
+    If your MCP client (e.g., your AI agent's framework) natively supports connecting to an MCP server via an SSE URL and a message endpoint, configure it with the URLs mentioned above.
 
-### Integrating with AI Assistants
-
-After building the server (`npm run build`), you need to configure your AI assistant (like VS Code with the Claude extension or the Claude Desktop app) to run it. This typically involves editing a JSON configuration file.
-
-**Example Configuration (e.g., in VS Code `settings.json` or Claude Desktop `claude_desktop_config.json`):**
-
-```json
-{
-  "mcpServers": {
-    // Give your server a unique name
-    "n8n-local": {
-      // Use 'node' to execute the built JavaScript file
-      "command": "node",
-      // Provide the *absolute path* to the built index.js file
-      "args": [
-        "/path/to/your/cloned/n8n-mcp-server/build/index.js"
-        // On Windows, use double backslashes:
-        // "C:\\path\\to\\your\\cloned\\n8n-mcp-server\\build\\index.js"
-      ],
-      // Environment variables needed by the server
-      "env": {
-        "N8N_API_URL": "http://your-n8n-instance:5678/api/v1", // Replace with your n8n URL
-        "N8N_API_KEY": "YOUR_N8N_API_KEY", // Replace with your key
-        // Add webhook credentials only if you plan to use webhook tools
-        // "N8N_WEBHOOK_USERNAME": "your_webhook_user",
-        // "N8N_WEBHOOK_PASSWORD": "your_webhook_password"
-      },
-      // Ensure the server is enabled
-      "disabled": false,
-      // Default autoApprove settings
-      "autoApprove": []
+    **Example `mcp.json` configuration for direct SSE:**
+    ```json
+    {
+      "n8n_local_docker_sse": {
+        "url": "https://my-n8n-mcp.up.railway.app/sse",
+        "disabled": false,
+        "alwaysAllow": [
+          "mcp_n8n_docker_direct_list_workflows", 
+          "mcp_n8n_docker_direct_get_workflow",
+          "mcp_n8n_docker_direct_create_workflow",
+          "mcp_n8n_docker_direct_update_workflow",
+          "mcp_n8n_docker_direct_delete_workflow",
+          "mcp_n8n_docker_direct_activate_workflow",
+          "mcp_n8n_docker_direct_deactivate_workflow",
+          "mcp_n8n_docker_direct_list_executions"
+        ],
+        "timeout": 300
+      }
     }
-    // ... other servers might be configured here
-  }
-}
-```
+    ```
+    When you deploy add your variables and make sure to expose the 8080 port in railway.
 
-**Key Points:**
+2.  **Using Supergateway on the Client-Side (SSE-to-stdio bridge):**
+    If your MCP client expects to launch a local command that communicates via stdio (standard input/output), you can use *another* Supergateway instance locally on the client's machine to bridge the remote SSE connection back to stdio.
 
-*   Replace `/path/to/your/cloned/n8n-mcp-server/` with the actual absolute path where you cloned and built the repository.
-*   Use the correct path separator for your operating system (forward slashes `/` for macOS/Linux, double backslashes `\\` for Windows).
-*   Ensure you provide the correct `N8N_API_URL` (including `/api/v1`) and `N8N_API_KEY`.
-*   The server needs to be built (`npm run build`) before the assistant can run the `build/index.js` file.
+    **Example `mcp.json` or similar client configuration:**
+    ```json
+    {
+      "mcpServers": {
+        "n8n-remote-sse": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "supergateway",
+            "--sse", "http://<server_address>:<port>", // Replace with your actual server URL
+            "--outputTransport", "stdio",
+            "--logLevel", "info" // Optional: for debugging Supergateway on the client
+          ],
+          "env": {
+             // Any environment variables Supergateway client might need, usually none for this mode
+          },
+          "disabled": false
+        }
+      }
+    }
+    ```
+    In this client-side Supergateway setup:
+    *   Your AI agent's MCP client runs `npx -y supergateway --sse ...` as its command.
+    *   This local Supergateway connects to your remote `n8n-mcp-server`'s SSE endpoint.
+    *   It then presents an MCP interface over stdio to your AI agent.
 
 ## Available Tools
 
-The server provides the following tools:
+The server provides the following tools (accessed via the MCP connection established above):
 
 ### Using Webhooks
 
 This MCP server supports executing workflows through n8n webhooks. To use this functionality:
 
-1. Create a webhook-triggered workflow in n8n.
-2. Set up Basic Authentication on your webhook node.
-3. Use the `run_webhook` tool to trigger the workflow, passing just the workflow name.
+1.  Create a webhook-triggered workflow in n8n.
+2.  Set up Basic Authentication on your webhook node (optional, but recommended).
+3.  Use the `run_webhook` tool to trigger the workflow, passing just the workflow name.
 
-Example:
+Example (conceptual client-side code):
 ```javascript
-const result = await useRunWebhook({
+// Assuming 'mcp.tools.run_webhook' is available on your connected MCP client instance
+const result = await mcp.tools.run_webhook({
   workflowName: "hello-world", // Will call <n8n-url>/webhook/hello-world
   data: {
     prompt: "Hello from AI assistant!"
   }
 });
 ```
-
-The webhook authentication is handled automatically using the `N8N_WEBHOOK_USERNAME` and `N8N_WEBHOOK_PASSWORD` environment variables.
+Webhook authentication (if used) is handled using the `N8N_WEBHOOK_USERNAME` and `N8N_WEBHOOK_PASSWORD` environment variables configured for the server.
 
 ### Workflow Management
 
@@ -179,45 +153,53 @@ The webhook authentication is handled automatically using the `N8N_WEBHOOK_USERN
 ### Execution Management
 
 - `execution_run`: Execute a workflow via the API
-- `run_webhook`: Execute a workflow via a webhook
+// Note: run_webhook is already listed above, often preferred for triggering.
 - `execution_get`: Get details of a specific execution
 - `execution_list`: List executions for a workflow
-- `execution_stop`: Stop a running execution
+// `execution_stop` might not be implemented in all n8n versions or the base server.
 
-## Resources
+## Self-Hosting (Advanced)
 
-The server provides the following resources:
+For users who prefer to run the server outside of Docker or a platform like Railway, you can run the Node.js application directly. This gives you more control but requires manual setup of the execution environment and potentially Supergateway if SSE is desired.
 
-- `n8n://workflows/list`: List of all workflows
-- `n8n://workflow/{id}`: Details of a specific workflow
-- `n8n://executions/{workflowId}`: List of executions for a workflow
-- `n8n://execution/{id}`: Details of a specific execution
+1.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/YOUR_REPONAME.git # Replace with your repository URL
+    cd YOUR_REPONAME
+    ```
 
-## Development
+2.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
 
-### Building
+3.  **Build the Server:**
+    ```bash
+    npm run build
+    ```
+    This compiles the TypeScript to JavaScript in the `build` directory.
 
-```bash
-npm run build
-```
+4.  **Configure Environment Variables:**
+    Create a `.env` file in the project root (you can copy `.env.example`) and fill in your n8n API details (`N8N_API_URL`, `N8N_API_KEY`, etc.) and any other required variables like `PORT` (if not 8080) or `DEBUG`.
 
-### Running in Development Mode
+5.  **Run the stdio MCP Server:**
+    ```bash
+    node build/index.js
+    ```
+    This will start the `n8n-mcp-server` communicating over standard input/output (stdio).
 
-```bash
-npm run dev
-```
+6.  **Exposing via SSE (Optional, Manual Supergateway Setup):
+    If you need to access this self-hosted server via SSE, you will need to run your own instance of Supergateway to wrap the stdio command above. For example:
+    ```bash
+    npx -y supergateway --stdio "node build/index.js" --port 8080 # Add other Supergateway flags as needed
+    ```
+    Ensure that the environment variables configured in step 4 are accessible to the `node build/index.js` process when launched by Supergateway.
 
-### Testing
+This method is more involved than the Docker or Railway deployments, which handle the Supergateway integration automatically within the container.
 
-```bash
-npm test
-```
+## Credits 
 
-### Linting
-
-```bash
-npm run lint
-```
+Sign on this repo: https://github.com/leonardsellem/n8n-mcp-server/
 
 ## License
 
