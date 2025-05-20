@@ -199,7 +199,7 @@ This method is more involved than the Docker or Railway deployments, which handl
 
 ## Credits 
 
-Sign on this repo: https://github.com/leonardsellem/n8n-mcp-server/
+Based on this repo: https://github.com/leonardsellem/n8n-mcp-server/
 
 ## License
 
