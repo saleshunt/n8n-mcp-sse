@@ -1,0 +1,805 @@
+{
+  "name": "🔀 Subflow: Meeting categorization AI Supabase - v30.07.2025",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "  {\n    \"fireflies_id\": \"dfdf\"\n  }"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1664,
+        -416
+      ],
+      "id": "cae3159e-8790-4e48-81d3-d3877b26a5af",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are going to classify a meeting into categories based on the meeting summary.\nAvailable Categories for this user:\n\n{{ $(\"Get user's active meeting categories\").all().map(cat => `ID: ${cat.json.id}, Name: ${cat.json.name}, Description: ${cat.json.description}`).join('\\n') }}\n\nYour task:\n1. Assess if meeting was \"Internal\" or \"External\"\n2. Select the most appropriate category ID from the provided list\n3. Do not make up categories from outside the list, use \"Other\" if meeting doesn't fit the listed categories\nProvide rationale (3-4 sentences)\n\n\n# Context about me\n## About me:\n{{ $('get meeting, user and company info').item.json.user.about_me }}\n## Context about our company: \n{{ $('get meeting, user and company info').item.json.company.team_description }}\n{{ $('get meeting, user and company info').item.json.company.our_customers_description }}\n{{ $('get meeting, user and company info').item.json.company.our_pricing }}\n{{ $('get meeting, user and company info').item.json.company.saleshunt_description }}\n{{ $('get meeting, user and company info').item.json.user.calendly_links_prompt }}\n{{ $('get meeting, user and company info').item.json.company.clients_we_work_for }}\n{{ $('get meeting, user and company info').item.json.company.our_value_proposition }}\n\n\n# Context on the meeting\nTitle: {{ $('get meeting, user and company info').item.json.meeting.fireflies_title }}\nDate: {{ $('get meeting, user and company info').item.json.meeting.fireflies_timestamp }}\nParticipants: {{ $('get meeting, user and company info').item.json.meeting.contacts_name_and_email }}\n- Should be all added to external_emails\n## Initial AI summaries on the meeting:\n{{ $('get meeting, user and company info').item.json.meeting.fireflies_meeting_bullet_gist }}\n{{ $('get meeting, user and company info').item.json.meeting.fireflies_meeting_overview }}\n\n# Full meeting transcript: \n{{ $('get meeting, user and company info').item.json.meeting.fireflies_full_transcript }}\n\n# Output\nThe structured output should always be like this.\nOutput format:\n\n{\n  \"assessment_type\": string,\n  \"meeting_category_id\": number,\n  \"meeting_category_name\": string,\n  \"meeting_category_rationale\": string\n}\n",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        -768,
+        -416
+      ],
+      "id": "fe389ffd-77d2-48bc-bad1-00ed086ca32f",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "o3-mini",
+          "mode": "list",
+          "cachedResultName": "o3-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -736,
+        -192
+      ],
+      "id": "b52a1274-2dbf-43cf-86f8-4ec8ecbf79fb",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "uw88GG25kedqU7Sn",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"assessment_type\": \"Internal\",\n  \"meeting_category_id\": 57,\n  \"meeting_category_name\": \"Sales Pitch\",\n  \"meeting_category_rationale\": \"This meeting is between two parties, one of which is trying to get the other to buy their services or products\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -608,
+        -192
+      ],
+      "id": "bc831b1f-2e32-4e51-a345-8a041beecb94",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "g2P6RFUBzOWe0rVP",
+          "mode": "list",
+          "cachedResultName": "Workflows — Supabase - get meeting, user and company"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fireflies_id": "={{ $json.fireflies_id }}"
+          },
+          "matchingColumns": [
+            "fireflies_id"
+          ],
+          "schema": [
+            {
+              "id": "fireflies_id",
+              "displayName": "fireflies_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        -416
+      ],
+      "id": "420240ce-588d-47cf-a46c-c3aba6c5ddb1",
+      "name": "get meeting, user and company info"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "gN3M5gA4HuzJnoGV",
+          "mode": "list",
+          "cachedResultName": "Workflows — Supabase - upcert meeting"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fireflies_id": "={{ $('When Executed by Another Workflow').item.json.fireflies_id }}",
+            "meeting_categorization_by_ai_id": "={{ $json.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "fireflies_id",
+              "displayName": "fireflies_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "fireflies_meeting_summary",
+              "displayName": "fireflies_meeting_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "fireflies_meeting_action_items",
+              "displayName": "fireflies_meeting_action_items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "fireflies_meeting_overview",
+              "displayName": "fireflies_meeting_overview",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "fireflies_meeting_bullet_gist",
+              "displayName": "fireflies_meeting_bullet_gist",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "fireflies_full_transcript",
+              "displayName": "fireflies_full_transcript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "fireflies_title",
+              "displayName": "fireflies_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "fireflies_timestamp",
+              "displayName": "fireflies_timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "fireflies_meeting_link",
+              "displayName": "fireflies_meeting_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            },
+            {
+              "id": "meeting_contact_id",
+              "displayName": "meeting_contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            },
+            {
+              "id": "meeting_categorization_by_ai_id",
+              "displayName": "meeting_categorization_by_ai_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "email_created_by_ai_id",
+              "displayName": "email_created_by_ai_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            },
+            {
+              "id": "meeting_summary_by_ai",
+              "displayName": "meeting_summary_by_ai",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "internal_emails_csv",
+              "displayName": "internal_emails_csv",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "contacts_name_and_email",
+              "displayName": "contacts_name_and_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "contacts_emails_csv",
+              "displayName": "contacts_emails_csv",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "contacts_first_names",
+              "displayName": "contacts_first_names",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        -512
+      ],
+      "id": "474e24fc-179f-4ce4-828d-be05b40b893a",
+      "name": "update meeting"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Meeting Category Not Found"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        528,
+        -304
+      ],
+      "id": "0222dee3-f66b-41d3-bd7a-06a57bc8d45f",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "meeting_categories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.output.meeting_category_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        -416
+      ],
+      "id": "d351df10-c606-4335-83ee-5228da170807",
+      "name": "Supabase -  Get meeting_category",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "bsODqWNovTCPlJ6S",
+          "name": "Supabase account - maia"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "zEdc0nM4Jq7Es4La",
+          "mode": "list",
+          "cachedResultName": "Workflows — Supabase - upcert meeting_categorization_by_ai"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "assessment_type": "={{ $('AI Agent').item.json.output.assessment_type }}",
+            "meeting_category_rationale": "={{ $('AI Agent').item.json.output.meeting_category_rationale }}",
+            "meeting_category_id": "={{ $json.meeting_category_id }}",
+            "meeting_id": "={{ $('get meeting, user and company info').item.json.meeting.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "assessment_type",
+              "displayName": "assessment_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "meeting_category_rationale",
+              "displayName": "meeting_category_rationale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "meeting_id",
+              "displayName": "meeting_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "meeting_category_id",
+              "displayName": "meeting_category_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        -512
+      ],
+      "id": "a238c571-52e9-4174-bc3d-30527dbb8c8b",
+      "name": "create meeting categorization by ai"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -992,
+        -416
+      ],
+      "id": "dfd2e799-1f0c-4e8c-ad88-9218072efa00",
+      "name": "Aggregate categories"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f0ba6cb1-7f32-4b61-bac5-14abb2c1db35",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -144,
+        -416
+      ],
+      "id": "26f31ce1-b99a-45a0-af6c-c1ccdf2d9568",
+      "name": "If - Category found",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "meeting_categories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('get meeting, user and company info').item.json.user.id }}"
+            },
+            {
+              "keyName": "name",
+              "keyValue": "Other"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -352
+      ],
+      "id": "2f901735-847b-4f24-a305-f912067ee183",
+      "name": "Get user's Other category",
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "bsODqWNovTCPlJ6S",
+          "name": "Supabase account - maia"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f0ba6cb1-7f32-4b61-bac5-14abb2c1db35",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        304,
+        -352
+      ],
+      "id": "d1d5f798-907f-41b7-8515-43551e3272c6",
+      "name": "If - 'Other' category found",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ab6758df-ed11-4cfe-a73c-8aab7517a77b",
+              "name": "meeting_category_id",
+              "value": "={{ $('If - Category found').item.json.id || $('If - \\'Other\\' category found').item.json.id}}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        -512
+      ],
+      "id": "aba52d7c-22ed-4048-bca1-bfd643f595b9",
+      "name": "Set meeting_category_id"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "r18Ls1lKlxC6a3bD",
+          "mode": "list",
+          "cachedResultName": "Workflows — Supabase - get active meeting categories by user id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $json.user.id }}"
+          },
+          "matchingColumns": [
+            "user_id"
+          ],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        -416
+      ],
+      "id": "6433c561-5385-4a36-b42d-2508440fb0c4",
+      "name": "Get user's active meeting categories"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "fireflies_id": "01JZ3RPJ06Y2R6V1P13ZWRBK71"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Supabase -  Get meeting_category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "get meeting, user and company info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get meeting, user and company info": {
+      "main": [
+        [
+          {
+            "node": "Get user's active meeting categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase -  Get meeting_category": {
+      "main": [
+        [
+          {
+            "node": "If - Category found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create meeting categorization by ai": {
+      "main": [
+        [
+          {
+            "node": "update meeting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate categories": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Category found": {
+      "main": [
+        [
+          {
+            "node": "Set meeting_category_id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get user's Other category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get user's Other category": {
+      "main": [
+        [
+          {
+            "node": "If - 'Other' category found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - 'Other' category found": {
+      "main": [
+        [
+          {
+            "node": "Set meeting_category_id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set meeting_category_id": {
+      "main": [
+        [
+          {
+            "node": "create meeting categorization by ai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get user's active meeting categories": {
+      "main": [
+        [
+          {
+            "node": "Aggregate categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "089da9d0-9896-46a9-84ea-55439f48aa5c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "34455b3e989eaafdc7e0cd327df68be3b35172b2664d0cd7620b4b4992262759"
+  },
+  "id": "FixfDBAaFtSxPNEu",
+  "tags": []
+}

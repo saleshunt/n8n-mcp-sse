@@ -1,0 +1,127 @@
+{
+  "name": "Supabase - upcert meeting",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"fireflies_id\": \"a string\",\n  \"fireflies_meeting_summary\": \"string\",\n  \"fireflies_meeting_action_items\": \"string\",\n  \"fireflies_meeting_overview\":\n  \"string\",\n  \"fireflies_meeting_bullet_gist\": \"string\",\n  \"fireflies_full_transcript\": \"string\",\n \"fireflies_title\": \"string\",\n  \"fireflies_timestamp\": \"timestampz\",\n  \"fireflies_meeting_link\":\"link\",\n  \"user_id\": 1,\n  \"meeting_contact_id\": 2,\n\"meeting_categorization_by_ai_id\": 2,\n  \"email_created_by_ai_id\": 2,\n  \"meeting_summary_by_ai\": \"string\",\n  \"internal_emails_csv\": \"string\",\n  \"contacts_name_and_email\": \"string\",\n  \"contacts_emails_csv\": \"string\",\n  \"contacts_first_names\": \"string\"\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fda916d0-214a-4592-827a-38e2da3fb420",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wgiqrcygrggbnlpovgzk.supabase.co/rest/v1/meetings?on_conflict=fireflies_id",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates, return=representation"
+            },
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnaXFyY3lncmdnYm5scG92Z3prIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MzcyNTMsImV4cCI6MjA2MzMxMzI1M30.5AFKOw4R8E3jS_jPSwzOmYRLuCRwQelXiw39ugAxSbw"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json[\"cleaned\"]}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ],
+      "id": "6ef2d3f1-7b61-479a-be9e-d1689b972bec",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "cocHA8EoDjQnuVeq",
+          "name": "Supabase - Maia Frontend"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\n\n// Clean the object: remove null, undefined, and empty strings\nconst cleaned = {};\nfor (const key in input) {\n  if (\n    input[key] !== null &&\n    input[key] !== undefined &&\n    !(typeof input[key] === 'string' && input[key].trim() === '')\n  ) {\n    cleaned[key] = input[key];\n  }\n}\n\n// Wrap it in an array for Supabase's expected format\nreturn [\n  {\n    json: {cleaned}\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "1467c498-4036-45fc-9bda-95dc6000f2b5",
+      "name": "Code"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "fireflies_full_transcript": null,
+          "fireflies_title": "prep check-in Just Brands",
+          "fireflies_timestamp": "2025-06-26T07:00:00.000Z",
+          "fireflies_meeting_link": "01JYF7E9HQWYNF3B9C3G3BNZWP",
+          "meeting_contact_id": null,
+          "email_categorisation_by_ai_id": null,
+          "email_created_by_ai_id": null,
+          "meeting_summary_by_ai": null,
+          "internal_emails_csv": null,
+          "contacts_name_and_email": null,
+          "contacts_emails_csv": null,
+          "contacts_first_names": null
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1644c8f4-0d8b-4467-a5da-11f318271269",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "34455b3e989eaafdc7e0cd327df68be3b35172b2664d0cd7620b4b4992262759"
+  },
+  "id": "gN3M5gA4HuzJnoGV",
+  "tags": []
+}

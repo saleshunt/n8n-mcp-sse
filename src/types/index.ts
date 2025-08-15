@@ -25,15 +25,65 @@ export interface ToolCallResult {
   isError?: boolean;
 }
 
+/**
+ * Strict n8n node type
+ */
+export interface N8nNode {
+  id: string;
+  name: string;
+  type: string;
+  typeVersion?: number;
+  position: [number, number];
+  parameters?: Record<string, any>;
+  credentials?: Record<string, { id: string; name: string }>;
+  [key: string]: any;
+}
+
+/**
+ * Workflow Settings as per OpenAPI schema
+ */
+export interface WorkflowSettings {
+  saveExecutionProgress?: boolean;
+  saveManualExecutions?: boolean;
+  saveDataErrorExecution?: 'all' | 'none';
+  saveDataSuccessExecution?: 'all' | 'none';
+  executionTimeout?: number;
+  errorWorkflow?: string;
+  timezone?: string;
+  executionOrder?: string;
+  [key: string]: any;
+}
+
+/**
+ * Connections structure as used by n8n
+ */
+export type ConnectionTarget = { node: string; type: string; index: number };
+export type PortConnections = ConnectionTarget[][]; // array per output index
+export type NodeConnections = Record<string, PortConnections>; // port name -> connections
+export type Connections = Record<string, NodeConnections>; // source node name -> ports
+
+/**
+ * Optional high-level Edge DSL to build n8n connections
+ */
+export interface EdgeDefinition {
+  from: string;
+  to: string;
+  fromPort?: string; // default: main
+  toPort?: string;   // default: main
+  fromIndex?: number; // default: 0
+  toIndex?: number;   // default: 0
+}
+
 // Type for n8n workflow object
 export interface Workflow {
   id: string;
   name: string;
   active: boolean;
-  nodes: any[];
-  connections: any;
+  nodes: N8nNode[];
+  connections: Connections;
   createdAt: string;
   updatedAt: string;
+  settings?: WorkflowSettings;
   [key: string]: any;
 }
 

@@ -104,14 +104,17 @@ function setupToolCallRequestHandler(server: Server): void {
         UpdateWorkflowHandler,
         DeleteWorkflowHandler,
         ActivateWorkflowHandler,
-        DeactivateWorkflowHandler
+        DeactivateWorkflowHandler,
+        ValidateWorkflowHandler,
       } = await import('../tools/workflow/index.js');
       
       const {
         ListExecutionsHandler,
         GetExecutionHandler,
         DeleteExecutionHandler,
-        RunWebhookHandler
+        RunWebhookHandler,
+        RunExecutionByIdHandler,
+        HealthCheckHandler,
       } = await import('../tools/execution/index.js');
       
       // Route the tool call to the appropriate handler
@@ -136,6 +139,9 @@ function setupToolCallRequestHandler(server: Server): void {
       } else if (toolName === 'deactivate_workflow') {
         const handler = new DeactivateWorkflowHandler();
         result = await handler.execute(args);
+      } else if (toolName === 'validate_workflow') {
+        const handler = new ValidateWorkflowHandler();
+        result = await handler.execute(args);
       } else if (toolName === 'list_executions') {
         const handler = new ListExecutionsHandler();
         result = await handler.execute(args);
@@ -147,6 +153,12 @@ function setupToolCallRequestHandler(server: Server): void {
         result = await handler.execute(args);
       } else if (toolName === 'run_webhook') {
         const handler = new RunWebhookHandler();
+        result = await handler.execute(args);
+      } else if (toolName === 'execution_run') {
+        const handler = new RunExecutionByIdHandler();
+        result = await handler.execute(args);
+      } else if (toolName === 'health_check') {
+        const handler = new HealthCheckHandler();
         result = await handler.execute(args);
       } else {
         throw new Error(`Unknown tool: ${toolName}`);

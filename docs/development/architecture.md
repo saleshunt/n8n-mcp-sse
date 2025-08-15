@@ -69,6 +69,7 @@ The resources layer (`src/resources/`) provides data access through URI-based te
 2. **Dynamic Resources** (`src/resources/dynamic/`): Parameterized resources like specific workflow details
 
 Each resource implements:
+
 - URI pattern matching
 - Content retrieval
 - Error handling
@@ -135,17 +136,17 @@ Used to add cross-cutting concerns like logging and error handling to base funct
 
 ## Core Files and Their Purposes
 
-| File | Purpose |
-|------|---------|
-| `src/index.ts` | Main entry point, initializes and configures the server |
-| `src/config/environment.ts` | Manages environment variables and configuration |
-| `src/api/n8n-client.ts` | Main client for interacting with the n8n API |
-| `src/tools/workflow/handler.ts` | Handles workflow-related tool requests |
-| `src/tools/execution/handler.ts` | Handles execution-related tool requests |
-| `src/resources/index.ts` | Registers and manages resource handlers |
-| `src/resources/dynamic/workflow.ts` | Provides access to specific workflow resources |
-| `src/resources/static/workflows.ts` | Provides access to workflow listings |
-| `src/errors/index.ts` | Defines and manages error types and handling |
+| File                                | Purpose                                                 |
+| ----------------------------------- | ------------------------------------------------------- |
+| `src/index.ts`                      | Main entry point, initializes and configures the server |
+| `src/config/environment.ts`         | Manages environment variables and configuration         |
+| `src/api/n8n-client.ts`             | Main client for interacting with the n8n API            |
+| `src/tools/workflow/handler.ts`     | Handles workflow-related tool requests                  |
+| `src/tools/execution/handler.ts`    | Handles execution-related tool requests                 |
+| `src/resources/index.ts`            | Registers and manages resource handlers                 |
+| `src/resources/dynamic/workflow.ts` | Provides access to specific workflow resources          |
+| `src/resources/static/workflows.ts` | Provides access to workflow listings                    |
+| `src/errors/index.ts`               | Defines and manages error types and handling            |
 
 ## Extension Points
 
@@ -156,3 +157,42 @@ To extend the server with new capabilities:
 3. **Supporting new n8n API features**: Extend the API client in `src/api/` to support new API endpoints or features
 
 For detailed instructions on extending the server, see [Extending the Server](./extending.md).
+
+## Validation & Building Pipeline
+
+This server enforces a strict pipeline before create/update requests are sent to n8n:
+
+1. Normalization
+   - Ensures default `settings`, `typeVersion`, etc.
+2. Schema Validation (AJV)
+   - Enforces OpenAPI-aligned schema for workflow/nodes/settings
+3. Strong Validation
+   - Uniqueness of node names/ids
+   - Connections structure and port compatibility using a capabilities registry
+   - Expression references (e.g. `$('Node')`) must target existing node names
+4. API call
+   - Only after all validations pass
+
+## Edges DSL
+
+To reduce user error when wiring nodes, you can provide a simple `edges` array:
+
+```json
+[
+  {
+    "from": "OpenAI Chat Model",
+    "fromPort": "ai_languageModel",
+    "to": "AI Agent",
+    "toPort": "ai_languageModel"
+  },
+  {
+    "from": "Structured Output Parser",
+    "fromPort": "ai_outputParser",
+    "to": "AI Agent",
+    "toPort": "ai_outputParser"
+  },
+  { "from": "AI Agent", "to": "Supabase -  Get meeting_category" }
+]
+```
+
+The server converts edges → n8n `connections` while validating that each port is allowed by the node type.

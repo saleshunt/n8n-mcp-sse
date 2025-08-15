@@ -14,6 +14,7 @@ import { getUpdateWorkflowToolDefinition, UpdateWorkflowHandler } from './update
 import { getDeleteWorkflowToolDefinition, DeleteWorkflowHandler } from './delete.js';
 import { getActivateWorkflowToolDefinition, ActivateWorkflowHandler } from './activate.js';
 import { getDeactivateWorkflowToolDefinition, DeactivateWorkflowHandler } from './deactivate.js';
+import { getValidateWorkflowToolDefinition, ValidateWorkflowHandler } from './validate.js';
 
 // Export handlers
 export {
@@ -24,6 +25,7 @@ export {
   DeleteWorkflowHandler,
   ActivateWorkflowHandler,
   DeactivateWorkflowHandler,
+  ValidateWorkflowHandler,
 };
 
 /**
@@ -40,5 +42,6 @@ export async function setupWorkflowTools(): Promise<ToolDefinition[]> {
     getDeleteWorkflowToolDefinition(),
     getActivateWorkflowToolDefinition(),
     getDeactivateWorkflowToolDefinition(),
+    getValidateWorkflowToolDefinition(),
   ];
 }

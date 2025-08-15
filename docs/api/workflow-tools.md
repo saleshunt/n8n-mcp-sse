@@ -45,20 +45,20 @@ const inactiveWorkflows = await useWorkflowList({ active: false });
 ```javascript
 [
   {
-    "id": "1234abc",
-    "name": "Test Workflow 1",
-    "active": true,
-    "createdAt": "2025-03-01T12:00:00.000Z",
-    "updatedAt": "2025-03-02T14:30:00.000Z"
+    id: "1234abc",
+    name: "Test Workflow 1",
+    active: true,
+    createdAt: "2025-03-01T12:00:00.000Z",
+    updatedAt: "2025-03-02T14:30:00.000Z",
   },
   {
-    "id": "5678def",
-    "name": "Test Workflow 2",
-    "active": false,
-    "createdAt": "2025-03-01T12:00:00.000Z",
-    "updatedAt": "2025-03-12T10:15:00.000Z"
-  }
-]
+    id: "5678def",
+    name: "Test Workflow 2",
+    active: false,
+    createdAt: "2025-03-01T12:00:00.000Z",
+    updatedAt: "2025-03-12T10:15:00.000Z",
+  },
+];
 ```
 
 ### workflow_get
@@ -111,7 +111,7 @@ const workflow = await useWorkflowGet({ id: "1234abc" });
 
 Creates a new workflow.
 
-**Input Schema:**
+**Input Schema (extended):**
 
 ```json
 {
@@ -127,7 +127,23 @@ Creates a new workflow.
     },
     "connections": {
       "type": "object",
-      "description": "Connection configuration"
+      "description": "Connection configuration (or provide 'edges' and we build this for you)"
+    },
+    "edges": {
+      "type": "array",
+      "description": "Optional higher-level edge list used to build n8n connections",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "fromPort": { "type": "string" },
+          "toPort": { "type": "string" },
+          "fromIndex": { "type": "number" },
+          "toIndex": { "type": "number" }
+        },
+        "required": ["from", "to"]
+      }
     },
     "active": {
       "type": "boolean",
@@ -142,7 +158,7 @@ Creates a new workflow.
 }
 ```
 
-**Example Usage:**
+**Example Usage (with edges):**
 
 ```javascript
 const newWorkflow = await useWorkflowCreate({
@@ -150,13 +166,13 @@ const newWorkflow = await useWorkflowCreate({
   active: true,
   nodes: [
     {
-      "name": "Start",
-      "type": "n8n-nodes-base.start",
-      "position": [100, 200],
-      "parameters": {}
-    }
+      name: "Start",
+      type: "n8n-nodes-base.start",
+      position: [100, 200],
+      parameters: {},
+    },
   ],
-  connections: {}
+  edges: [{ from: "Start", to: "HTTP Request" }],
 });
 ```
 
@@ -185,7 +201,7 @@ const newWorkflow = await useWorkflowCreate({
 
 Updates an existing workflow.
 
-**Input Schema:**
+**Input Schema (extended):**
 
 ```json
 {
@@ -205,8 +221,36 @@ Updates an existing workflow.
     },
     "connections": {
       "type": "object",
-      "description": "Updated connection configuration"
+      "description": "Updated connection configuration (or provide 'edges' and we build this for you)"
     },
+    "edges": {
+      "type": "array",
+      "description": "Optional higher-level edge list used to build n8n connections",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "fromPort": { "type": "string" },
+          "toPort": { "type": "string" },
+          "fromIndex": { "type": "number" },
+          "toIndex": { "type": "number" }
+        },
+        "required": ["from", "to"]
+      }
+    },
+### Validation and Guarantees
+
+Before sending to n8n, this server now validates:
+
+- Node structure (ids, unique names, type, typeVersion, position, parameters, credentials)
+- Connections structure (per-port arrays with `{ node, type, index }` targets)
+- Port compatibility using a node capabilities registry (supports `ai_languageModel`, `ai_outputParser`, etc.)
+- Expression references: `$('Node Name')` in parameters must refer to existing nodes
+- OpenAPI-required fields for create/update (`nodes`, `connections`, `settings`)
+
+If `edges` are supplied, the server deterministically builds `connections` and validates them.
+
     "active": {
       "type": "boolean",
       "description": "Whether the workflow should be active"
@@ -226,7 +270,7 @@ Updates an existing workflow.
 const updatedWorkflow = await useWorkflowUpdate({
   id: "1234abc",
   name: "Updated Workflow Name",
-  active: false
+  active: false,
 });
 ```
 
@@ -359,13 +403,13 @@ const deactivatedWorkflow = await useWorkflowDeactivate({ id: "1234abc" });
 
 All workflow tools can return the following errors:
 
-| Error | Description |
-|-------|-------------|
-| Authentication Error | The provided API key is invalid or missing |
-| Not Found Error | The requested workflow does not exist |
-| Validation Error | The input parameters are invalid or incomplete |
-| Permission Error | The API key does not have permission to perform the operation |
-| Server Error | An unexpected error occurred on the n8n server |
+| Error                | Description                                                   |
+| -------------------- | ------------------------------------------------------------- |
+| Authentication Error | The provided API key is invalid or missing                    |
+| Not Found Error      | The requested workflow does not exist                         |
+| Validation Error     | The input parameters are invalid or incomplete                |
+| Permission Error     | The API key does not have permission to perform the operation |
+| Server Error         | An unexpected error occurred on the n8n server                |
 
 ## Best Practices
 

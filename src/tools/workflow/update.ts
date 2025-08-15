@@ -6,8 +6,10 @@
  */
 
 import { BaseWorkflowToolHandler } from './base-handler.js';
-import { ToolCallResult, ToolDefinition } from '../../types/index.js';
+import { ToolCallResult, ToolDefinition, EdgeDefinition, WorkflowSettings } from '../../types/index.js';
 import { N8nApiError } from '../../errors/index.js';
+import { buildConnectionsFromEdges } from '../../builders/connections-builder.js';
+import { validateNodesAndConnections, validateWorkflowShape } from '../../validation/workflow-validator.js';
 
 /**
  * Handler for the update_workflow tool
@@ -23,7 +25,14 @@ export class UpdateWorkflowHandler extends BaseWorkflowToolHandler {
     // console.error('[UpdateWorkflowHandler] execute START. Raw args:', JSON.stringify(args, null, 2));
     return this.handleExecution(async (args) => {
       // console.error('[UpdateWorkflowHandler] handleExecution START. Parsed args:', JSON.stringify(args, null, 2));
-      const { workflowId, name, nodes, connections } = args;
+      const { workflowId, name, nodes, connections, edges, settings } = args as {
+        workflowId: string;
+        name?: string;
+        nodes?: any[];
+        connections?: Record<string, any>;
+        edges?: EdgeDefinition[];
+        settings?: WorkflowSettings;
+      };
       
       if (!workflowId) {
         // console.error('[UpdateWorkflowHandler] Error: Missing workflowId.');
@@ -46,14 +55,43 @@ export class UpdateWorkflowHandler extends BaseWorkflowToolHandler {
       const currentWorkflow = await this.apiService.getWorkflow(workflowId);
       // console.error('[UpdateWorkflowHandler] Fetched currentWorkflow. Top-level keys:', Object.keys(currentWorkflow || {}));
       
+      // Build connections from edges when provided
+      const nextNodes = nodes !== undefined ? nodes : currentWorkflow.nodes;
+      let nextConnections = connections !== undefined ? connections : currentWorkflow.connections;
+      if (!nextConnections && Array.isArray(edges) && Array.isArray(nextNodes)) {
+        nextConnections = buildConnectionsFromEdges(nextNodes, edges);
+      }
+
+      // Prepare settings (preserve if not provided)
+      const nextSettings: WorkflowSettings = settings !== undefined ? settings : (currentWorkflow.settings || {
+        saveExecutionProgress: true,
+        saveManualExecutions: true,
+        saveDataErrorExecution: 'all',
+        saveDataSuccessExecution: 'all',
+        executionTimeout: 3600,
+        timezone: 'UTC',
+        executionOrder: 'v1',
+      });
+
       // REFINED: Construct a clean payload based on API requirements
       const workflowData: Record<string, any> = {
-        // Required fields as per n8n API documentation for PUT /workflows/{id}
         name: name !== undefined ? name : currentWorkflow.name,
-        nodes: nodes !== undefined ? nodes : currentWorkflow.nodes,
-        connections: connections !== undefined ? connections : currentWorkflow.connections,
-        settings: {}, // TEST: Send minimal empty settings object
+        nodes: nextNodes,
+        connections: nextConnections,
+        settings: nextSettings,
       };
+
+      // Validate shape according to OpenAPI (requires nodes/connections/settings)
+      const shapeResult = validateWorkflowShape(workflowData);
+      if (!shapeResult.valid) {
+        throw new N8nApiError(`Workflow schema validation failed: ${shapeResult.errors.map(e => e.message).join('; ')}`);
+      }
+
+      // Strong validation for nodes + connections
+      const strongResult = validateNodesAndConnections(workflowData.nodes, workflowData.connections);
+      if (!strongResult.valid) {
+        throw new N8nApiError(`Workflow validation failed: ${strongResult.errors.map(e => e.message).join('; ')}`);
+      }
       
       // CRITICAL LOG: Keep this one active for now
       console.error('[UpdateWorkflowHandler] Constructed workflowData to send:', JSON.stringify(workflowData, null, 2));
@@ -131,7 +169,27 @@ export function getUpdateWorkflowToolDefinition(): ToolDefinition {
         },
         connections: {
           type: 'object',
-          description: 'Updated connection mappings between nodes',
+          description: 'Updated connection mappings between nodes (or provide edges and we will build this for you)',
+        },
+        edges: {
+          type: 'array',
+          description: 'Optional high-level edges to build connections',
+          items: {
+            type: 'object',
+            properties: {
+              from: { type: 'string' },
+              to: { type: 'string' },
+              fromPort: { type: 'string' },
+              toPort: { type: 'string' },
+              fromIndex: { type: 'number' },
+              toIndex: { type: 'number' },
+            },
+            required: ['from', 'to'],
+          },
+        },
+        settings: {
+          type: 'object',
+          description: 'Updated workflow settings; previous settings are preserved if omitted',
         },
       },
       required: ['workflowId'],
